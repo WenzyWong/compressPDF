@@ -12,7 +12,7 @@ struct TIFFOptions: Sendable {
             switch self {
             case .rgb: "RGB"
             case .cmyk: "CMYK"
-            case .gray: "灰度"
+            case .gray: String(localized: "灰度")
             }
         }
     }
@@ -25,7 +25,7 @@ struct TIFFOptions: Sendable {
             switch self {
             case .lzw: "LZW"
             case .zip: "ZIP"
-            case .none: "不壓縮"
+            case .none: String(localized: "不壓縮")
             }
         }
     }
@@ -44,13 +44,13 @@ enum TIFFConverter {
         let output = uniqueOutputURL(for: input, suffix: "", extension: "tif")
         try await Task.detached {
             guard let doc = CGPDFDocument(input as CFURL) else {
-                throw CompressorError(errorDescription: "無法讀取這個 PDF")
+                throw CompressorError(errorDescription: String(localized: "無法讀取這個 PDF"))
             }
             guard doc.isUnlocked else {
-                throw CompressorError(errorDescription: "PDF 已加密，請先解鎖")
+                throw CompressorError(errorDescription: String(localized: "PDF 已加密，請先解鎖"))
             }
             guard let dest = CGImageDestinationCreateWithURL(output as CFURL, UTType.tiff.identifier as CFString, doc.numberOfPages, nil) else {
-                throw CompressorError(errorDescription: "無法創建 TIFF 文件")
+                throw CompressorError(errorDescription: String(localized: "無法創建 TIFF 文件"))
             }
             let properties = [
                 kCGImagePropertyDPIWidth: options.dpi,
@@ -60,13 +60,13 @@ enum TIFFConverter {
 
             for index in 1...doc.numberOfPages {
                 guard let page = doc.page(at: index), let image = render(page, options: options) else {
-                    throw CompressorError(errorDescription: "第 \(index) 頁渲染失敗（分辨率可能過高）")
+                    throw CompressorError(errorDescription: String(localized: "第 \(index) 頁渲染失敗（分辨率可能過高）"))
                 }
                 CGImageDestinationAddImage(dest, image, properties)
             }
             guard CGImageDestinationFinalize(dest) else {
                 try? FileManager.default.removeItem(at: output)
-                throw CompressorError(errorDescription: "寫入 TIFF 失敗")
+                throw CompressorError(errorDescription: String(localized: "寫入 TIFF 失敗"))
             }
         }.value
         return output

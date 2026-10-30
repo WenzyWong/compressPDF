@@ -6,7 +6,6 @@ struct PDFCompressorApp: App {
     var body: some Scene {
         Window("PDF Compressor", id: "main") {
             ContentView()
-                .containerBackground(.clear, for: .window)  // 窗口本身透明，只留玻璃面板
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -18,8 +17,8 @@ enum Mode: String, CaseIterable, Identifiable {
     var id: Self { self }
     var title: String {
         switch self {
-        case .compress: "壓縮 PDF"
-        case .tiff: "轉為 TIFF"
+        case .compress: String(localized: "壓縮 PDF")
+        case .tiff: String(localized: "轉為 TIFF")
         }
     }
 }
@@ -82,7 +81,7 @@ struct ContentView: View {
         .padding(.top, 36)  // 留出紅綠燈按鈕的位置
         .padding(.bottom, 20)
         .frame(width: 460)
-        .glassEffect(.regular, in: .rect(cornerRadius: 26))  // 整個窗口是一塊液態玻璃
+        .windowBackground()
         .ignoresSafeArea()
         // 整個窗口都可接收拖放；用 NSItemProvider 讀取 Finder 的 file URL，比 dropDestination(for: URL.self) 可靠
         .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
@@ -109,7 +108,7 @@ struct ContentView: View {
                 .contentTransition(.symbolEffect(.replace))
             Text("拖入 PDF 文件")
                 .font(.headline)
-            Text(mode == .compress ? "或點擊選擇，壓縮後保存在原文件旁" : "或點擊選擇，轉換為 TIFF 保存在原文件旁")
+            Text(mode == .compress ? LocalizedStringKey("或點擊選擇，壓縮後保存在原文件旁") : "或點擊選擇，轉換為 TIFF 保存在原文件旁")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .contentTransition(.opacity)
@@ -209,10 +208,10 @@ struct ContentView: View {
 
 /// 選項面板中的一行：左側標籤固定寬度，右側控件
 struct OptionRow<Content: View>: View {
-    let label: String
+    let label: LocalizedStringKey
     @ViewBuilder let content: Content
 
-    init(_ label: String, @ViewBuilder content: () -> Content) {
+    init(_ label: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.label = label
         self.content = content()
     }
@@ -223,6 +222,18 @@ struct OptionRow<Content: View>: View {
                 .frame(width: 72, alignment: .leading)
             content
             Spacer(minLength: 0)
+        }
+    }
+}
+
+extension View {
+    /// macOS 26 起窗口本身透明，整個窗口是一塊液態玻璃；更早的系統用普通窗口背景色
+    @ViewBuilder func windowBackground() -> some View {
+        if #available(macOS 26, *) {
+            glassEffect(.regular, in: .rect(cornerRadius: 26))
+                .containerBackground(.clear, for: .window)
+        } else {
+            background(Color(nsColor: .windowBackgroundColor))
         }
     }
 }
@@ -269,7 +280,7 @@ struct JobRow: View {
     @ViewBuilder private var detail: some View {
         switch job.state {
         case .running:
-            Text(job.mode == .compress ? "壓縮中…" : "轉換中…")
+            Text(job.mode == .compress ? LocalizedStringKey("壓縮中…") : "轉換中…")
         case let .done(output, before, after):
             Text("\(format(before)) → \(output.pathExtension.uppercased()) \(format(after))")
         case let .failed(message):

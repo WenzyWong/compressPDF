@@ -6,13 +6,13 @@ enum Level: String, CaseIterable, Identifiable {
     var id: Self { self }
     var title: String {
         switch self {
-        case .lossless: "無損"
-        case .high: "高畫質"
-        case .low: "輕度"
-        case .recommended: "推薦"
-        case .small: "小檔案"
-        case .extreme: "極限"
-        case .custom: "自定義"
+        case .lossless: String(localized: "無損")
+        case .high: String(localized: "高畫質")
+        case .low: String(localized: "輕度")
+        case .recommended: String(localized: "推薦")
+        case .small: String(localized: "小檔案")
+        case .extreme: String(localized: "極限")
+        case .custom: String(localized: "自定義")
         }
     }
     /// (目標 DPI, JPEG 品質)，與 compress.py 一致；無損和自定義為 nil
@@ -28,9 +28,9 @@ enum Level: String, CaseIterable, Identifiable {
     }
     var summary: String {
         switch self {
-        case .lossless: "只清理冗餘數據，不改動圖片"
-        case .custom: "自行設定圖片 DPI 和 JPEG 品質"
-        default: settings.map { "圖片 \($0.dpi) dpi · JPEG 品質 \($0.quality)" } ?? ""
+        case .lossless: String(localized: "只清理冗餘數據，不改動圖片")
+        case .custom: String(localized: "自行設定圖片 DPI 和 JPEG 品質")
+        default: settings.map { String(localized: "圖片 \($0.dpi) dpi · JPEG 品質 \($0.quality)") } ?? ""
         }
     }
 }
@@ -44,7 +44,7 @@ struct CompressorError: LocalizedError {
 enum Compressor {
     static func compress(_ input: URL, level: Level, customDPI: Int, customQuality: Int) async throws -> URL {
         guard let resources = Bundle.main.resourceURL else {
-            throw CompressorError(errorDescription: "找不到 app 資源目錄")
+            throw CompressorError(errorDescription: String(localized: "找不到 app 資源目錄"))
         }
         let python = resources.appendingPathComponent("python/bin/python3")
         let script = resources.appendingPathComponent("compress.py")
@@ -71,11 +71,11 @@ enum Compressor {
             guard process.terminationStatus == 0 else {
                 try? FileManager.default.removeItem(at: output)
                 let message = String(decoding: errData, as: UTF8.self).split(separator: "\n").last.map(String.init)
-                throw CompressorError(errorDescription: message ?? "壓縮失敗")
+                throw CompressorError(errorDescription: message ?? String(localized: "壓縮失敗"))
             }
             if fileSize(output) >= fileSize(input) {
                 try? FileManager.default.removeItem(at: output)
-                throw CompressorError(errorDescription: "已是最優，無法進一步壓縮")
+                throw CompressorError(errorDescription: String(localized: "已是最優，無法進一步壓縮"))
             }
         }.value
         return output

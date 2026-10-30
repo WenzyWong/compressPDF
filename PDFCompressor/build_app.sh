@@ -29,12 +29,31 @@ fi
 
 # 2. 編譯 Swift 界面
 swift build -c release
+
+# 3. 生成 macOS 多尺寸應用圖標
+ICONSET=.build/AppIcon.iconset
+rm -rf "$ICONSET" .build/AppIcon.icns
+mkdir -p "$ICONSET"
+sips -z 16 16 Assets/AppIcon.png --out "$ICONSET/icon_16x16.png" >/dev/null
+sips -z 32 32 Assets/AppIcon.png --out "$ICONSET/icon_16x16@2x.png" >/dev/null
+sips -z 32 32 Assets/AppIcon.png --out "$ICONSET/icon_32x32.png" >/dev/null
+sips -z 64 64 Assets/AppIcon.png --out "$ICONSET/icon_32x32@2x.png" >/dev/null
+sips -z 128 128 Assets/AppIcon.png --out "$ICONSET/icon_128x128.png" >/dev/null
+sips -z 256 256 Assets/AppIcon.png --out "$ICONSET/icon_128x128@2x.png" >/dev/null
+sips -z 256 256 Assets/AppIcon.png --out "$ICONSET/icon_256x256.png" >/dev/null
+sips -z 512 512 Assets/AppIcon.png --out "$ICONSET/icon_256x256@2x.png" >/dev/null
+sips -z 512 512 Assets/AppIcon.png --out "$ICONSET/icon_512x512.png" >/dev/null
+sips -z 1024 1024 Assets/AppIcon.png --out "$ICONSET/icon_512x512@2x.png" >/dev/null
+iconutil -c icns "$ICONSET" -o .build/AppIcon.icns
+
 # Documents 由 iCloud 同步，會給文件加 Finder 屬性導致簽名失敗，所以先在臨時目錄組裝和簽名
 STAGE=$(mktemp -d)
 APP="$STAGE/PDF Compressor.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/PDFCompressor "$APP/Contents/MacOS/"
 cp ../compress.py "$APP/Contents/Resources/"
+cp .build/AppIcon.icns "$APP/Contents/Resources/"
+cp -R Localization/*.lproj "$APP/Contents/Resources/"
 cp -R $CACHE/python "$APP/Contents/Resources/python"
 # 預編譯字節碼並一起簽名；運行時用 -B 禁止 Python 再往 app 內寫 __pycache__（否則會破壞簽名）
 "$APP/Contents/Resources/python/bin/python3" -I -m compileall -q "$APP/Contents/Resources/python/lib/python3.12" >/dev/null || true
@@ -49,11 +68,13 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
     <key>CFBundleIdentifier</key><string>local.pdfcompressor</string>
     <key>CFBundleExecutable</key><string>PDFCompressor</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.1.0</string>
-    <key>CFBundleVersion</key><string>2</string>
-    <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleShortVersionString</key><string>1.2.0</string>
+    <key>CFBundleVersion</key><string>3</string>
+    <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>CFBundleDevelopmentRegion</key><string>zh-Hant</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string><string>zh-Hant</string></array>
     <key>CFBundleDocumentTypes</key>
     <array><dict>
         <key>CFBundleTypeName</key><string>PDF</string>
@@ -65,7 +86,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </plist>
 EOF
 
-# 3. 簽名：清除擴展屬性，先簽內嵌的每個 Mach-O，再簽整個 app
+# 4. 簽名：清除擴展屬性，先簽內嵌的每個 Mach-O，再簽整個 app
 xattr -cr "$APP"
 find "$APP/Contents/Resources/python" -type f \( -name "*.so" -o -name "*.dylib" -o -perm -u+x \) \
     -exec sh -c 'file -b "$1" | grep -q Mach-O && codesign --force --sign - "$1"' _ {} \; 2>/dev/null
